@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dessine-moi un chiffre</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        #container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 40px;
+            margin-top: 20px;
+        }
+        #canvas-container {
+            border: 2px solid #000;
+            width: 280px;
+            height: 280px;
+            display: inline-block;
+        }
+        #predictions-container {
+            font-size: 18px;
+            text-align: left;
+            display: inline-block;
+        }
+        .prediction-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .digit {
+            font-weight: bold;
+            width: 20px;
+            margin-right: 10px;
+        }
+        .progress-bar-container {
+            width: 200px;
+            height: 20px;
+            background-color: #eee;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background-color: #1E90FF;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+        #buttons-container {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+        #history-container {
+            margin-top: 30px;
+            text-align: left;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .history-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .history-image {
+            width: 50px;
+            height: 50px;
+            border: 1px solid #ccc;
+            margin-right: 10px;
+        }
+        .history-details {
+            flex-grow: 1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .correct {
+            background-color: #28a745;
+        }
+        .incorrect {
+            background-color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <h1>Dessine-moi un chiffre</h1>
+    <div id="container">
+        <div id="canvas-container"></div>
+        <div id="predictions-container">
+            <!-- Les barres de progression pour les prédictions seront affichées ici -->
+            <div id="prediction-0" class="prediction-item">
+                <span class="digit">0:</span>
+                <div class="progress-bar-container">
+                    <div id="progress-0" class="progress-bar"></div>
+                </div>
+            </div>
+            <div id="prediction-1" class="prediction-item">
+                <span class="digit">1:</span>
+                <div class="progress-bar-container">
+                    <div id="progress-1" class="progress-bar"></div>
+                </div>
+            </div>
+            <div id="prediction-2" class="prediction-item">
+                <span class="digit">2:</span>
+                <div class="progress-bar-container">
+                    <div id="progress-2" class="progress-bar"></div>
+                </div>
+            </div>
+            <div id="prediction-3" class="prediction-item">
+                <span class="digit">3:</span>
+                <div class="progress-bar-container">
+                    <div id="progress-3" class="progress-bar"></div>
+                </div>
+            </div>
+            <div id="prediction-4" class="prediction-item">
+                <span class="digit">4:</span>
+                <div class="progress-bar-container">
+                    <div id="progress-4" class="progress-bar"></div>
+                </div>
+            </div>
+            <div id="prediction-5" class="prediction-item">
+                <span class="digit">5:</span>
+                <div class="progress-bar-container">
+                    <div id="progress-5" class="progress-bar"></div>
+                </div>
+            </div>
+            <div id="prediction-6" class="prediction-item">
+                <span class="digit">6:</span>
+                <div class="progress-bar-container">
+                    <div id="progress-6" class="progress-bar"></div>
+                </div>
+            </div>
+            <div id="prediction-7" class="prediction-item">
+                <span class="digit">7:</span>
+                <div class="progress-bar-container">
+                    <div id="progress-7" class="progress-bar"></div>
+                </div>
+            </div>
+            <div id="prediction-8" class="prediction-item">
+                <span class="digit">8:</span>
+                <div class="progress-bar-container">
+                    <div id="progress-8" class="progress-bar"></div>
+                </div>
+            </div>
+            <div id="prediction-9" class="prediction-item">
+                <span class="digit">9:</span>
+                <div class="progress-bar-container">
+                    <div id="progress-9" class="progress-bar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="buttons-container">
+        <button onclick="clearCanvas()">Effacer</button>
+        <button onclick="finishDrawing()">Terminé</button>
+    </div>
+
+    <div id="history-container">
+        <h2>Historique des Dessins</h2>
+        <div id="history-items"></div>
+    </div>
+
+    <script>
+        let canvas;
+        let lastPrediction = null;
+
+        function setup() {
+            canvas = createCanvas(280, 280);
+            canvas.parent('canvas-container');
+            background(255);
+            strokeWeight(20);
+            stroke(0);
+        }
+
+        function draw() {
+            if (mouseIsPressed) {
+                line(mouseX, mouseY, pmouseX, pmouseY);
+                submitDrawing();  // Appel à chaque coup de pinceau
+            }
+        }
+
+        function submitDrawing() {
+            canvas.loadPixels();
+            let image64 = canvas.elt.toDataURL();
+            fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: 'image=' + encodeURIComponent(image64),
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.probabilities) {
+                    updateProgressBars(data.probabilities);
+                    lastPrediction = {
+                        digit: data.digit,
+                        confidence: (data.confidence * 100).toFixed(2),
+                        image: image64
+                    };
+                } else {
+                    console.error('Le serveur n\'a pas renvoyé de probabilités:', data);
+                }
+            })
+            .catch(error => {
+                console.error('Erreur lors de la requête:', error);
+            });
+        }
+
+        function updateProgressBars(probabilities) {
+            probabilities.forEach((prob, index) => {
+                const bar = document.getElementById(`progress-${index}`);
+                bar.style.width = `${(prob * 100)}%`;
+            });
+        }
+
+        function clearCanvas() {
+            background(255);
+            lastPrediction = null;  // Réinitialiser la dernière prédiction
+            for (let i = 0; i < 10; i++) {
+                const bar = document.getElementById(`progress-${i}`);
+                bar.style.width = '0%';
+            }
+        }
+
+        function finishDrawing() {
+            if (lastPrediction) {
+                addHistoryItem(lastPrediction);
+                lastPrediction = null;
+                clearCanvas();  // Réinitialiser la zone de dessin après ajout à l'historique
+            }
+        }
+
+        function addHistoryItem(prediction) {
+            const historyContainer = document.getElementById('history-items');
+
+            const historyItem = document.createElement('div');
+            historyItem.classList.add('history-item');
+
+            const imageElement = document.createElement('img');
+            imageElement.src = prediction.image;
+            imageElement.classList.add('history-image');
+
+            const detailsElement = document.createElement('div');
+            detailsElement.classList.add('history-details');
+            detailsElement.innerHTML = `Chiffre prédit: <strong>${prediction.digit}</strong> avec ${prediction.confidence}% de confiance`;
+
+            const buttonsElement = document.createElement('div');
+            buttonsElement.classList.add('history-buttons');
+
+            const correctButton = document.createElement('button');
+            correctButton.textContent = 'Correct';
+            correctButton.classList.add('correct');
+            correctButton.onclick = () => {
+                historyItem.style.backgroundColor = '#d4edda';  // Vert clair
+                buttonsElement.remove();  // Supprimer les boutons après sélection
+            };
+
+            const incorrectButton = document.createElement('button');
+            incorrectButton.textContent = 'Erreur';
+            incorrectButton.classList.add('incorrect');
+            incorrectButton.onclick = () => {
+                historyItem.style.backgroundColor = '#f8d7da';  // Rouge clair
+                buttonsElement.remove();  // Supprimer les boutons après sélection
+            };
+
+            buttonsElement.appendChild(correctButton);
+            buttonsElement.appendChild(incorrectButton);
+
+            historyItem.appendChild(imageElement);
+            historyItem.appendChild(detailsElement);
+            historyItem.appendChild(buttonsElement);
+
+            // Ajouter l'élément en haut de l'historique
+            historyContainer.prepend(historyItem);
+        }
+    </script>
+</body>
+</html>
